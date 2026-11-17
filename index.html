@@ -57,6 +57,7 @@ tr.now td{background:var(--accent-bg)}
 .form{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center}
 .chart{overflow-x:auto;margin:4px 0 10px}.chart svg{display:block}.chart text{fill:var(--muted);font-size:11px;font-family:inherit}.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .goal{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}.goal div{background:var(--chip);border-radius:8px;padding:8px 4px}.goal b{display:block;font-size:20px}.goal span{font-size:12px;color:var(--muted)}.gbar{height:14px;background:var(--chip);border-radius:7px;overflow:hidden;margin:10px 0 4px;position:relative}.gbar>div{height:100%;background:var(--accent)}.gbar>i{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text)}.gsub{font-size:13px;color:var(--muted)}@media(max-width:420px){.goal{grid-template-columns:repeat(2,1fr)}}
+.win{width:70px;padding:4px 6px;border:1px solid var(--accent);border-radius:6px;background:var(--card);color:var(--text);font:inherit;font-size:14px;text-align:right}
 .note{font-size:13px;color:var(--muted);margin-top:12px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 </style>
@@ -80,8 +81,8 @@ tr.now td{background:var(--accent-bg)}
 </section>
 
 <section class="view" id="v-ngay"><div class="card goalcard"></div><div class="card"><h2>Theo ngày</h2><div class="legend"><span><i style="background:var(--accent)"></i>Đạt</span><span><i style="background:var(--warn)"></i>Thiếu</span><span>— Mục tiêu 2.200 kcal</span></div><div class="chart" id="c-ngay"></div><div class="wrap" id="t-ngay"></div></div></section>
-<section class="view" id="v-tuan"><div class="card goalcard"></div><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
-<section class="view" id="v-thang"><div class="card goalcard"></div><div class="card"><h2>Theo tháng</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-thang"></div><div class="wrap" id="t-thang"></div><p class="note">Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
+<section class="view" id="v-tuan"><div class="card goalcard"></div><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Gõ số cân vào ô "Cân (kg)" của tuần đó là lưu. Tăng = so với tuần trước. Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
+<section class="view" id="v-thang"><div class="card goalcard"></div><div class="card"><h2>Theo tháng</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-thang"></div><div class="wrap" id="t-thang"></div><p class="note">Gõ số cân vào ô "Cân (kg)" của tháng đó là lưu. Tăng = so với tháng trước. Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
 
 <section class="view" id="v-cai">
   <div class="card"><h2>Mục tiêu</h2>
@@ -226,21 +227,25 @@ function renderTuan(){
  const el=$('t-tuan');if(needCfg(el)){$('c-tuan').innerHTML='';return}const c=cfg(),t=today();
  {const rows=[];for(let i=0;;i++){const a=addD(c.start,i*7),b=addD(a,6);if(a>t)break;const r=lastW(a,b);rows.push({l:'T'+(i+1),v:r?r.w:null,t:target(b),ok:r?r.w-target(r.d)>=-0.25:true})}
   chart($('c-tuan'),rows,{fmt:v=>kg(v),aria:'Cân nặng theo tuần'})}
- let h='<table><tr><th>Tuần</th><th>Ngày đạt</th><th>Calo TB</th><th>Cân</th><th>Mục tiêu</th><th>Chênh</th></tr>';const rows=[];
+ let h='<table><tr><th>Tuần</th><th>Cân (kg)</th><th>Tăng</th><th>Mục tiêu</th><th>Chênh</th><th>Ngày đạt</th><th>Calo TB</th></tr>';const rows=[];let prev=c.w0;
  for(let i=0;;i++){const a=addD(c.start,i*7),b=addD(a,6);if(a>t)break;let ok=0,sum=0,cnt=0;for(let d=a;d<=b&&d<=t;d=addD(d,1)){const s=sums(d);if(s.k>=TARGET_MIN)ok++;if(s.k){sum+=s.k;cnt++}}
-  const r=lastW(a,b),w=r?r.w:null,tg=target(b),df=r?w-target(r.d):null;
-  rows.unshift(`<tr${a<=t&&t<=b?' class="now"':''}><td>Tuần ${i+1} (${dm(a)}–${dm(b)})</td><td>${ok}/7</td><td>${cnt?fmt(sum/cnt):'—'}</td><td>${kg(w)}</td><td>${kg(tg)}</td><td>${df==null?'—':`<span class="${df>=-0.25?'ok':'no'}">${sign(df)}</span>`}</td></tr>`)}
- el.innerHTML=h+rows.join('')+'</table>';
+  const r=lastW(a,b),w=r?r.w:null,tg=target(b),df=r?w-target(r.d):null,gn=w!=null?w-prev:null;if(w!=null)prev=w;
+  const sd=r?r.d:(a<=t&&t<=b?t:b);
+  rows.unshift(`<tr${a<=t&&t<=b?' class="now"':''}><td>Tuần ${i+1} (${dm(a)}–${dm(b)})</td><td>${wIn(sd,w)}</td><td>${gn==null?'—':`<span class="${gn>0?'ok':'no'}">${sign(gn)}</span>`}</td><td>${kg(tg)}</td><td>${df==null?'—':`<span class="${df>=-0.25?'ok':'no'}">${sign(df)}</span>`}</td><td>${ok}/7</td><td>${cnt?fmt(sum/cnt):'—'}</td></tr>`)}
+ el.innerHTML=h+rows.join('')+'</table>';bindW(el);
 }
+function wIn(d,w){return `<input class="win" type="number" step="0.1" inputmode="decimal" placeholder="kg" data-d="${d}" value="${w??''}">`}
+function bindW(el){el.querySelectorAll('.win').forEach(i=>i.onchange=()=>{const v=parseFloat(String(i.value).replace(',','.')),y=day(i.dataset.d,true);if(v>0)y.weight=Math.round(v*10)/10;else delete y.weight;save();show(tab)})}
 function renderThang(){
  const el=$('t-thang');if(needCfg(el)){$('c-thang').innerHTML='';return}const c=cfg(),t=today();
  {const rows=[];for(let i=0;i<c.months;i++){const a=addM(c.start,i),b=addD(addM(c.start,i+1),-1),r=a<=t?lastW(a,b):null;rows.push({l:'Th'+(i+1),l2:dm(addM(c.start,i+1)),v:r?r.w:null,t:c.w0+(c.goal-c.w0)*(i+1)/c.months,ok:r?r.w-target(r.d)>=-0.5:true})}
   chart($('c-thang'),rows,{fmt:v=>kg(v),aria:'Cân nặng theo tháng'})}
- let h=`<table><tr><th>Tháng</th><th>Ngày đạt</th><th>Cân thật</th><th>Mốc cần đạt</th><th>Chênh</th></tr><tr><td>Bắt đầu ${dmy(c.start)}</td><td></td><td>${kg(c.w0)}</td><td>${kg(c.w0)}</td><td></td></tr>`;
+ let h=`<table><tr><th>Tháng</th><th>Cân (kg)</th><th>Tăng</th><th>Mốc cần đạt</th><th>Chênh</th><th>Ngày đạt</th></tr><tr><td>Bắt đầu ${dmy(c.start)}</td><td>${kg(c.w0)}</td><td></td><td>${kg(c.w0)}</td><td></td><td></td></tr>`;let prev=c.w0;
  for(let i=0;i<c.months;i++){const a=addM(c.start,i),nx=addM(c.start,i+1),b=addD(nx,-1);let ok=0,len=diff(a,nx);if(a<=t)for(let d=a;d<=b&&d<=t;d=addD(d,1))if(sums(d).k>=TARGET_MIN)ok++;
-  const r=a<=t?lastW(a,b):null,w=r?r.w:null,tg=c.w0+(c.goal-c.w0)*(i+1)/c.months,df=r?w-target(r.d):null;
-  h+=`<tr${a<=t&&t<=b?' class="now"':''}><td>Tháng ${i+1} (${dm(a)}–${dm(b)})</td><td>${a<=t?ok+'/'+len:'—'}</td><td>${kg(w)}</td><td>${kg(tg)} <small>(${dm(nx)})</small></td><td>${df==null?'—':`<span class="${df>=-0.5?'ok':'no'}">${sign(df)}</span>`}</td></tr>`}
- el.innerHTML=h+'</table>';
+  const r=a<=t?lastW(a,b):null,w=r?r.w:null,tg=c.w0+(c.goal-c.w0)*(i+1)/c.months,df=r?w-target(r.d):null,gn=w!=null?w-prev:null;if(w!=null)prev=w;
+  const sd=r?r.d:(t<=b?t:b);
+  h+=`<tr${a<=t&&t<=b?' class="now"':''}><td>Tháng ${i+1} (${dm(a)}–${dm(b)})</td><td>${a<=t?wIn(sd,w):'—'}</td><td>${gn==null?'—':`<span class="${gn>0?'ok':'no'}">${sign(gn)}</span>`}</td><td>${kg(tg)} <small>(${dm(nx)})</small></td><td>${df==null?'—':`<span class="${df>=-0.5?'ok':'no'}">${sign(df)}</span>`}</td><td>${a<=t?ok+'/'+len:'—'}</td></tr>`}
+ el.innerHTML=h+'</table>';bindW(el);
 }
 function renderCai(){const c=cfg()||{};$('c-start').value=c.start||today();$('c-w0').value=c.w0??'';$('c-goal').value=c.goal??'';$('c-months').value=c.months||12}
 function show(v){tab=v;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));renderGoal();({hom:renderHom,ngay:renderNgay,tuan:renderTuan,thang:renderThang,cai:renderCai})[v]();scrollTo(0,0)}
