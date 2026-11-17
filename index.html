@@ -55,6 +55,7 @@ th{color:var(--muted);font-weight:500}
 tr.now td{background:var(--accent-bg)}
 .ok{color:var(--accent);font-weight:600}.no{color:var(--warn)}
 .form{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center}
+.chart{overflow-x:auto;margin:4px 0 10px}.chart svg{display:block}.chart text{fill:var(--muted);font-size:11px;font-family:inherit}.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .note{font-size:13px;color:var(--muted);margin-top:12px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 </style>
@@ -77,9 +78,9 @@ tr.now td{background:var(--accent-bg)}
   <div id="meals"></div>
 </section>
 
-<section class="view" id="v-ngay"><div class="card"><h2>Theo ngày</h2><div class="wrap" id="t-ngay"></div></div></section>
-<section class="view" id="v-tuan"><div class="card"><h2>Theo tuần</h2><div class="wrap" id="t-tuan"></div><p class="note">Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
-<section class="view" id="v-thang"><div class="card"><h2>Theo tháng</h2><div class="wrap" id="t-thang"></div><p class="note">Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
+<section class="view" id="v-ngay"><div class="card"><h2>Theo ngày</h2><div class="legend"><span><i style="background:var(--accent)"></i>Đạt</span><span><i style="background:var(--warn)"></i>Thiếu</span><span>— Mục tiêu 2.200 kcal</span></div><div class="chart" id="c-ngay"></div><div class="wrap" id="t-ngay"></div></div></section>
+<section class="view" id="v-tuan"><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
+<section class="view" id="v-thang"><div class="card"><h2>Theo tháng</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-thang"></div><div class="wrap" id="t-thang"></div><p class="note">Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
 
 <section class="view" id="v-cai">
   <div class="card"><h2>Mục tiêu</h2>
@@ -92,8 +93,8 @@ tr.now td{background:var(--accent-bg)}
     <div class="row"><button class="btn" id="c-save">Lưu mục tiêu</button><span id="c-msg" class="ok"></span></div>
   </div>
   <div class="card"><h2>Sao lưu dữ liệu</h2>
-    <p class="note" style="margin-top:0">Dữ liệu chỉ nằm trong trình duyệt của máy này. Thỉnh thoảng bấm "Tải file sao lưu" để giữ một bản. Đổi máy hoặc lỡ xóa trình duyệt thì dùng "Nhập file sao lưu" để lấy lại.</p>
-    <div class="row"><button class="btn" id="exp">Tải file sao lưu</button><button class="btn ghost" id="imp">Nhập file sao lưu</button><input type="file" id="impf" accept=".json,application/json" hidden></div>
+    <p class="note" style="margin-top:0">Dữ liệu chỉ nằm trong trình duyệt của máy này. Thỉnh thoảng bấm "Lưu file sao lưu" để giữ một bản. Trên máy tính (Chrome, Edge) sẽ hiện cửa sổ cho chọn thư mục lưu. Trên điện thoại, file vào thư mục Tải xuống (Download). Đổi máy hoặc lỡ xóa trình duyệt thì dùng "Nhập file sao lưu" để lấy lại.</p>
+    <div class="row"><button class="btn" id="exp">Lưu file sao lưu</button><button class="btn ghost" id="imp">Nhập file sao lưu</button><input type="file" id="impf" accept=".json,application/json" hidden></div><p id="exp-msg" class="ok" style="margin:8px 0 0;font-size:14px"></p>
   </div>
   <div class="card"><h2>Xóa</h2><button class="btn ghost" id="clr">Xóa phần ăn của ngày đang xem</button></div>
 </section>
@@ -189,14 +190,30 @@ function renderHom(){
 }
 function needCfg(el){if(cfg())return false;el.innerHTML='<p>Vào mục <b>Cài đặt</b> nhập ngày bắt đầu, cân lúc bắt đầu và cân mục tiêu trước.</p>';return true}
 function firstDate(){const c=cfg();const ks=Object.keys(S.days).sort();let f=c?c.start:today();if(ks.length&&ks[0]<f)f=ks[0];return f}
+function chart(el,rows,o){
+ const n=rows.length,bw=26,gap=10,H=200,pt=22,pb=36,pl=40,ph=H-pt-pb,W=Math.max(pl+n*(bw+gap)+gap,300);
+ const vals=rows.flatMap(r=>[r.v,r.t]).filter(v=>v!=null);if(o.line!=null)vals.push(o.line);
+ let mn=o.min!=null?o.min:Math.floor(Math.min(...vals)-1),mx=Math.ceil(Math.max(...vals,mn+1)*(o.min===0?1.08:1)+(o.min===0?0:1));if(!isFinite(mn))mn=0;if(!isFinite(mx)||mx<=mn)mx=mn+1;
+ const y=v=>pt+ph-(v-mn)/(mx-mn)*ph;let g='';
+ for(const v of[mn,(mn+mx)/2,mx]){g+=`<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end">${o.fmt(v)}</text>`}
+ rows.forEach((r,i)=>{const x=pl+gap+i*(bw+gap),cx=x+bw/2;
+  if(r.v!=null&&r.v>mn){g+=`<rect x="${x}" y="${y(r.v)}" width="${bw}" height="${y(mn)-y(r.v)}" rx="3" fill="${r.ok?'var(--accent)':'var(--warn)'}"><title>${r.l}: ${o.fmt(r.v)}</title></rect><text x="${cx}" y="${y(r.v)-5}" text-anchor="middle">${o.fmt(r.v)}</text>`}
+  if(r.t!=null)g+=`<line x1="${x-3}" x2="${x+bw+3}" y1="${y(r.t)}" y2="${y(r.t)}" stroke="var(--text)" stroke-width="2"/>`;
+  g+=`<text x="${cx}" y="${H-pb+16}" text-anchor="middle">${r.l}</text>`;if(r.l2)g+=`<text x="${cx}" y="${H-pb+30}" text-anchor="middle">${r.l2}</text>`});
+ if(o.line!=null)g+=`<line x1="${pl}" x2="${W}" y1="${y(o.line)}" y2="${y(o.line)}" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+ el.innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="${o.aria}">${g}</svg>`;el.scrollLeft=el.scrollWidth}
 function renderNgay(){
+ {const t=today(),rows=[];for(let i=13;i>=0;i--){const d=addD(t,-i),k=sums(d).k;rows.push({l:dm(d),v:k||null,ok:k>=TARGET_MIN})}
+  chart($('c-ngay'),rows,{min:0,line:TARGET_MIN,fmt:v=>v>=1000?(v/1000).toLocaleString('vi-VN',{maximumFractionDigits:1})+'k':fmt(v),aria:'Calo 14 ngày gần nhất'})}
  const el=$('t-ngay'),t=today();let h='<table><tr><th>Ngày</th><th>Calo</th><th>Đạt</th><th>Đạm</th><th>Bữa</th><th>Cân</th><th>Mục tiêu</th></tr>';
  for(let d=t;d>=firstDate();d=addD(d,-1)){const s=sums(d),x=S.days[d],tg=target(d);
   h+=`<tr${d===t?' class="now"':''}><td>${dm(d)}</td><td>${s.k?fmt(s.k):'—'}</td><td>${s.k>=TARGET_MIN?'<span class="ok">Đạt</span>':(s.k?'<span class="no">Thiếu</span>':'—')}</td><td>${s.k?fmt(s.p)+' g':'—'}</td><td>${s.n}/6</td><td>${kg(x&&x.weight)}</td><td>${tg==null?'—':kg(tg)}</td></tr>`}
  el.innerHTML=h+'</table>';
 }
 function renderTuan(){
- const el=$('t-tuan');if(needCfg(el))return;const c=cfg(),t=today();
+ const el=$('t-tuan');if(needCfg(el)){$('c-tuan').innerHTML='';return}const c=cfg(),t=today();
+ {const rows=[];for(let i=0;;i++){const a=addD(c.start,i*7),b=addD(a,6);if(a>t)break;const r=lastW(a,b);rows.push({l:'T'+(i+1),v:r?r.w:null,t:target(b),ok:r?r.w-target(r.d)>=-0.25:true})}
+  chart($('c-tuan'),rows,{fmt:v=>kg(v),aria:'Cân nặng theo tuần'})}
  let h='<table><tr><th>Tuần</th><th>Ngày đạt</th><th>Calo TB</th><th>Cân</th><th>Mục tiêu</th><th>Chênh</th></tr>';const rows=[];
  for(let i=0;;i++){const a=addD(c.start,i*7),b=addD(a,6);if(a>t)break;let ok=0,sum=0,cnt=0;for(let d=a;d<=b&&d<=t;d=addD(d,1)){const s=sums(d);if(s.k>=TARGET_MIN)ok++;if(s.k){sum+=s.k;cnt++}}
   const r=lastW(a,b),w=r?r.w:null,tg=target(b),df=r?w-target(r.d):null;
@@ -204,7 +221,9 @@ function renderTuan(){
  el.innerHTML=h+rows.join('')+'</table>';
 }
 function renderThang(){
- const el=$('t-thang');if(needCfg(el))return;const c=cfg(),t=today();
+ const el=$('t-thang');if(needCfg(el)){$('c-thang').innerHTML='';return}const c=cfg(),t=today();
+ {const rows=[];for(let i=0;i<c.months;i++){const a=addM(c.start,i),b=addD(addM(c.start,i+1),-1),r=a<=t?lastW(a,b):null;rows.push({l:'Th'+(i+1),l2:dm(addM(c.start,i+1)),v:r?r.w:null,t:c.w0+(c.goal-c.w0)*(i+1)/c.months,ok:r?r.w-target(r.d)>=-0.5:true})}
+  chart($('c-thang'),rows,{fmt:v=>kg(v),aria:'Cân nặng theo tháng'})}
  let h=`<table><tr><th>Tháng</th><th>Ngày đạt</th><th>Cân thật</th><th>Mốc cần đạt</th><th>Chênh</th></tr><tr><td>Bắt đầu ${dmy(c.start)}</td><td></td><td>${kg(c.w0)}</td><td>${kg(c.w0)}</td><td></td></tr>`;
  for(let i=0;i<c.months;i++){const a=addM(c.start,i),nx=addM(c.start,i+1),b=addD(nx,-1);let ok=0,len=diff(a,nx);if(a<=t)for(let d=a;d<=b&&d<=t;d=addD(d,1))if(sums(d).k>=TARGET_MIN)ok++;
   const r=a<=t?lastW(a,b):null,w=r?r.w:null,tg=c.w0+(c.goal-c.w0)*(i+1)/c.months,df=r?w-target(r.d):null;
@@ -220,7 +239,9 @@ $('w').onchange=e=>{const v=parseFloat(String(e.target.value).replace(',','.'));
 $('c-save').onclick=()=>{const s=$('c-start').value,w0=parseFloat($('c-w0').value),g=parseFloat($('c-goal').value),m=parseInt($('c-months').value);
  if(!s||!(w0>0)||!(g>0)||!(m>0)){$('c-msg').className='no';$('c-msg').textContent='Điền đủ 4 ô trước khi lưu.';return}
  S.cfg={start:s,w0,goal:g,months:m};save();$('c-msg').className='ok';$('c-msg').textContent='Đã lưu.'};
-$('exp').onclick=()=>{const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sao-luu-calo-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exp').onclick=async()=>{const txt=JSON.stringify(S,null,1),name='sao-luu-calo-'+today()+'.json',msg=$('exp-msg');
+ if(window.showSaveFilePicker){try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'File sao lưu',accept:{'application/json':['.json']}}]});const w=await h.createWritable();await w.write(txt);await w.close();msg.textContent='Đã lưu file '+h.name+' vào thư mục bạn chọn.';return}catch(e){if(e&&e.name==='AbortError')return}}
+ const b=new Blob([txt],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);msg.textContent='Đã tải file '+name+' về thư mục Tải xuống (Download).'};
 $('imp').onclick=()=>$('impf').click();
 $('impf').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const o=JSON.parse(t);if(!o||!o.days)throw 0;if(confirm('Thay dữ liệu trên máy này bằng file sao lưu?')){S=o;save();alert('Đã nhập xong.');show('ngay')}}catch(x){alert('File không đúng định dạng sao lưu.')}});e.target.value=''};
 $('clr').onclick=()=>{if(confirm('Xóa phần ăn của ngày '+dmy(view)+'? Cân nặng vẫn giữ.')){const x=S.days[view];if(x){x.items={};x.extra={}}save();alert('Đã xóa.')}};
