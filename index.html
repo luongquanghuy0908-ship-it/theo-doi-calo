@@ -73,7 +73,7 @@ tr.now td{background:var(--accent-bg)}
 <section class="view" id="v-hom">
   <div class="top">
     <div class="daynav"><button id="prev" aria-label="Ngày trước">‹</button><span class="date" id="date"></span><button id="next" aria-label="Ngày sau">›</button></div>
-    <div class="total"><span id="kcal">0</span> <small>/ 2.200–2.400 kcal</small></div>
+    <div class="total"><span id="kcal">0</span> <small>/ 2.200–2.400 calo</small></div>
     <div class="bar"><div id="bar"></div></div>
     <div class="sub"><span>Đạm: <b id="pro">0</b> / 75 g</span><span>Bữa đã ăn: <b id="nmeal">0</b> / 6</span></div>
     <div class="status low" id="status"></div>
@@ -82,8 +82,8 @@ tr.now td{background:var(--accent-bg)}
   <div class="card goalcard"></div><div id="meals"></div>
 </section>
 
-<section class="view" id="v-ngay"><div class="card goalcard"></div><div class="card"><h2>Theo ngày</h2><div class="legend"><span><i style="background:var(--accent)"></i>Đạt</span><span><i style="background:var(--warn)"></i>Thiếu</span><span>— Mục tiêu 2.200 kcal</span></div><div class="chart" id="c-ngay"></div><div class="wrap" id="t-ngay"></div></div></section>
-<section class="view" id="v-tuan"><div class="card goalcard"></div><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Gõ số cân vào ô "Cân (kg)" của tuần đó là lưu. Tăng = so với tuần trước. Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
+<section class="view" id="v-ngay"><div class="card goalcard"></div><div class="card"><h2>Theo ngày</h2><div class="legend"><span><i style="background:var(--accent)"></i>Đạt</span><span><i style="background:var(--warn)"></i>Thiếu</span><span>— Mục tiêu 2.200 calo</span></div><div class="chart" id="c-ngay"></div><div class="wrap" id="t-ngay"></div></div></section>
+<section class="view" id="v-tuan"><div class="card goalcard"></div><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Gõ số cân vào ô "Cân (kg)" của tuần đó là lưu. Tăng = so với tuần trước. Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 calo.</p></div></section>
 <section class="view" id="v-thang"><div class="card goalcard"></div><div class="card"><h2>Theo tháng</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-thang"></div><div class="wrap" id="t-thang"></div><p class="note">Gõ số cân vào ô "Cân (kg)" của tháng đó là lưu. Tăng = so với tháng trước. Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
 
 <section class="view" id="v-cai">
@@ -167,17 +167,17 @@ function renderHom(){
  $('bar').style.width=Math.min(100,s.k/TARGET_MIN*100)+'%';
  const st=$('status');
  if(s.k>=TARGET_MIN){st.className='status ok';st.textContent=s.k>TARGET_MAX?'Đạt! Ăn vượt mục tiêu, vẫn tốt cho tăng cân.':'Đạt mục tiêu calo!'}
- else{const miss=TARGET_MIN-s.k;st.className='status low';st.textContent=`Còn thiếu ${fmt(miss)} kcal ≈ ${Math.ceil(miss/100)} quả chuối, hoặc ${Math.ceil(miss/135)} hộp sữa, hoặc ${Math.ceil(miss/200)} chén cơm.`}
+ else{const miss=TARGET_MIN-s.k;st.className='status low';st.textContent=`Còn thiếu ${fmt(miss)} calo ≈ ${Math.ceil(miss/100)} quả chuối, hoặc ${Math.ceil(miss/135)} hộp sữa, hoặc ${Math.ceil(miss/200)} chén cơm.`}
  const x=S.days[view];$('w').value=x&&x.weight!=null?x.weight:'';
  const box=$('meals');box.innerHTML='';
  for(const m of MEALS){
   const card=document.createElement('section');card.className='meal';
-  card.innerHTML=`<h2>${m.name} · ${m.time}<span>${fmt(mealSum(view,m.id))} kcal</span></h2>`;
+  card.innerHTML=`<h2>${m.name} · ${m.time}<span>${fmt(mealSum(view,m.id))} calo</span></h2>`;
   const g=document.createElement('div');g.className='grid';
   for(const f of FOODS){
    const c=((x&&x.items[m.id])||{})[f.id]||0;
    const b=document.createElement('button');b.className='food'+(c?' on':'');
-   b.innerHTML=`<b>${f.name}</b><i>${f.unit} · ${f.kcal} kcal</i>`+(c?`<span class="cnt">×${c}</span>`:'');
+   b.innerHTML=`<b>${f.name}</b><i>${f.unit} · ${f.kcal} calo</i>`+(c?`<span class="cnt">×${c}</span>`:'');
    b.onclick=()=>{const y=day(view,true);(y.items[m.id]=y.items[m.id]||{})[f.id]=c+1;save();renderHom()};
    if(c){const mi=document.createElement('button');mi.className='minus';mi.textContent='−';mi.setAttribute('aria-label','Bớt '+f.name);
     mi.onclick=e=>{e.stopPropagation();const y=day(view,true);if(c<=1)delete y.items[m.id][f.id];else y.items[m.id][f.id]=c-1;save();renderHom()};b.appendChild(mi)}
@@ -185,10 +185,10 @@ function renderHom(){
   }
   card.appendChild(g);
   const ex=document.createElement('div');ex.className='extra';
-  ((x&&x.extra[m.id])||[]).forEach((e,i)=>{const r=document.createElement('div');r.innerHTML=`<span>${esc(e.name)}: ${fmt(e.kcal)} kcal</span>`;const b=document.createElement('button');b.textContent='Xóa';b.onclick=()=>{day(view,true).extra[m.id].splice(i,1);save();renderHom()};r.appendChild(b);ex.appendChild(r)});
+  ((x&&x.extra[m.id])||[]).forEach((e,i)=>{const r=document.createElement('div');r.innerHTML=`<span>${esc(e.name)}: ${fmt(e.kcal)} calo</span>`;const b=document.createElement('button');b.textContent='Xóa';b.onclick=()=>{day(view,true).extra[m.id].splice(i,1);save();renderHom()};r.appendChild(b);ex.appendChild(r)});
   card.appendChild(ex);
   const cu=document.createElement('div');cu.className='custom';
-  cu.innerHTML=`<input placeholder="Món khác (vd: phở)"><input type="number" inputmode="numeric" placeholder="kcal"><button class="btn">Thêm</button>`;
+  cu.innerHTML=`<input placeholder="Món khác (vd: phở)"><input type="number" inputmode="numeric" placeholder="calo"><button class="btn">Thêm</button>`;
   const[ni,ki,ab]=cu.children;
   ab.onclick=()=>{const k=parseFloat(ki.value);if(!(k>0)){ki.focus();return}const y=day(view,true);(y.extra[m.id]=y.extra[m.id]||[]).push({name:ni.value.trim()||'Món khác',kcal:k});save();renderHom()};
   card.appendChild(cu);box.appendChild(card);
