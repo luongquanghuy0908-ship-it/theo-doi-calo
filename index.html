@@ -269,28 +269,35 @@ $('clr').onclick=()=>{if(confirm('Xóa phần ăn của ngày '+dmy(view)+'? Câ
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tab==='hom'&&view<today()&&view===addD(today(),-1)){view=today();renderHom()}});
 load();show(cfg()?'hom':'cai');
 </script>
-<script type="module">
-const FIREBASE_CONFIG=null;
-const acct=document.getElementById('acct');
-if(!FIREBASE_CONFIG){acct.style.display='none'}else{
- const V='10.12.2',B='https://www.gstatic.com/firebasejs/'+V+'/';
- const {initializeApp}=await import(B+'firebase-app.js');
- const {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged}=await import(B+'firebase-auth.js');
- const {getFirestore,doc,getDoc,setDoc,serverTimestamp}=await import(B+'firebase-firestore.js');
- const app=initializeApp(FIREBASE_CONFIG),auth=getAuth(app),db=getFirestore(app);
- let user=null,timer=null,ready=false;
- const bar=(t,btn)=>{acct.innerHTML=`<span>${t}</span>`;if(btn)acct.appendChild(btn)};
+<script>
+const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8nP3Sj89FDr-OFizlbkCofuLljlJHRZam45GDS7E0aCMmPA/exec';
+(function(){
+ const acct=document.getElementById('acct'),KK='theo-doi-calo-ma';
+ if(!SYNC_URL){acct.style.display='none';return}
+ let key=null,timer=null,busy=false,ready=false;const dirty=new Set();let cfgDirty=false;
+ try{key=localStorage.getItem(KK)}catch(e){}
+ const setBar=(t,btns)=>{acct.innerHTML='';const sp=document.createElement('span');sp.textContent=t;acct.appendChild(sp);for(const b of(btns||[]))acct.appendChild(b)};
  const mk=(t,f,g)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(g)b.className='ghost';return b};
- const loginBtn=mk('Đăng nhập Google',async()=>{const pv=new GoogleAuthProvider();try{await signInWithPopup(auth,pv)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')await signInWithRedirect(auth,pv);else alert('Đăng nhập lỗi: '+e.code)}});
- const ref=()=>doc(db,'users',user.uid);
- async function pull(){const snap=await getDoc(ref());const cloud=snap.exists()?JSON.parse(snap.data().state||'null'):null;S=merge(cloud,S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh();return cloud}
- async function push(){if(!user)return;try{await setDoc(ref(),{state:JSON.stringify(S),updated:serverTimestamp()});show2('Đã lưu lên tài khoản ✓')}catch(e){show2('Chưa lưu được lên mạng, sẽ thử lại')}}
- function show2(t){bar((user.email||'Đã đăng nhập')+' · '+t,mk('Đăng xuất',()=>{if(confirm('Đăng xuất? Dữ liệu vẫn nằm trong tài khoản.'))signOut(auth)},true))}
- window.cloudPush=()=>{if(!user||!ready)return;show2('Đang lưu...');clearTimeout(timer);timer=setTimeout(push,800)};
- onAuthStateChanged(auth,async u=>{user=u;ready=false;if(!u){bar('Chưa đăng nhập: dữ liệu chỉ nằm trên máy này',loginBtn);return}
-  show2('Đang tải dữ liệu...');try{await pull();ready=true;await push()}catch(e){show2('Lỗi tải dữ liệu: '+(e.code||e.message))}});
- document.addEventListener('visibilitychange',async()=>{if(!document.hidden&&user&&ready){try{await pull()}catch(e){}}});
-}
+ const loginBtn=()=>mk('Nhập mã đồng bộ',()=>{const k=prompt('Nhập mã đồng bộ của bạn (lần đầu tiên thì tự đặt một mã, nhớ kỹ để dùng ở máy khác):');if(k&&k.trim()){key=k.trim();try{localStorage.setItem(KK,key)}catch(e){}start()}});
+ const outBtn=()=>mk('Thoát',()=>{if(confirm('Thoát đồng bộ trên máy này? Dữ liệu vẫn nằm trong Google Sheet.')){key=null;ready=false;try{localStorage.removeItem(KK)}catch(e){}setBar('Chưa đồng bộ: dữ liệu chỉ nằm trên máy này',[loginBtn()])}},true);
+ const ok=t=>setBar('Đồng bộ Google Sheet · '+t,[outBtn()]);
+ function row(d){const x=S.days[d]||{},s=sums(d);return[d,Math.round(s.k),Math.round(s.p),s.n,s.k>=TARGET_MIN?'Đạt':(s.k?'Thiếu':''),x.weight??'',JSON.stringify(x),x.u||0]}
+ async function pull(){const r=await fetch(SYNC_URL+'?key='+encodeURIComponent(key)).then(r=>r.json());if(r.error==='key')throw{code:'key'};
+  const cloud={cfg:r.cfg,cfgU:r.cfgU,days:r.days||{}};
+  for(const d in S.days){const c=cloud.days[d];if(!c||(S.days[d].u||0)>(c.u||0))dirty.add(d)}
+  if(S.cfg&&(!cloud.cfg||(S.cfgU||0)>(cloud.cfgU||0)))cfgDirty=true;
+  S=merge(cloud,S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh()}
+ async function push(){if(!ready||busy)return;if(!dirty.size&&!cfgDirty){ok('Đã lưu ✓');return}
+  busy=true;const ds=[...dirty];dirty.clear();const sendCfg=cfgDirty;cfgDirty=false;ok('Đang lưu...');
+  try{const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());if(!r.ok)throw r;ok('Đã lưu ✓')}
+  catch(e){ds.forEach(d=>dirty.add(d));if(sendCfg)cfgDirty=true;ok('Chưa lưu được, sẽ thử lại');setTimeout(push,15000)}
+  finally{busy=false;if(dirty.size||cfgDirty)setTimeout(push,500)}}
+ const _day=day;day=function(d,c){if(c)dirty.add(d);return _day(d,c)};
+ window.cloudPush=()=>{if(!ready)return;if(S.cfg&&(S.cfgU||0)>(window._lastCfgU||0)){cfgDirty=true;window._lastCfgU=S.cfgU}clearTimeout(timer);timer=setTimeout(push,800)};
+ async function start(){ready=false;ok('Đang tải dữ liệu...');try{await pull();window._lastCfgU=S.cfgU||0;ready=true;await push()}catch(e){if(e&&e.code==='key'){key=null;try{localStorage.removeItem(KK)}catch(x){}setBar('Sai mã đồng bộ, nhập lại',[loginBtn()])}else{ok('Không kết nối được, đang dùng dữ liệu trên máy');setTimeout(start,20000)}}}
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ready&&!busy)pull().catch(()=>{})});
+ if(key)start();else setBar('Chưa đồng bộ: dữ liệu chỉ nằm trên máy này',[loginBtn()]);
+})();
 </script>
 </body>
 </html>
