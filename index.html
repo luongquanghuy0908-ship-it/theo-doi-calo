@@ -11,7 +11,7 @@
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:680px;margin:0 auto;padding:0 16px 48px}
 .tabs{position:sticky;top:0;z-index:6;background:var(--bg);display:flex;gap:4px;padding:10px 0 6px;overflow-x:auto}
-.tabs button{flex:1;white-space:nowrap;padding:8px 10px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;font:inherit;font-size:15px;cursor:pointer}
+.tabs button{flex:1;white-space:nowrap;padding:8px 6px;min-height:40px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;font:inherit;font-size:15px;cursor:pointer}
 .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .view{display:none}.view.on{display:block}
 .top{position:sticky;top:52px;z-index:5;background:var(--bg);padding:6px 0 10px;border-bottom:1px solid var(--line)}
@@ -62,7 +62,7 @@ tr.now td{background:var(--accent-bg)}
 <body>
 <main>
 <nav class="tabs">
-  <button data-v="hom">Ghi ăn</button><button data-v="ngay">Theo ngày</button><button data-v="tuan">Theo tuần</button><button data-v="thang">Theo tháng</button><button data-v="cai">Cài đặt</button>
+  <button data-v="hom">Ghi ăn</button><button data-v="ngay">Ngày</button><button data-v="tuan">Tuần</button><button data-v="thang">Tháng</button><button data-v="cai">Cài đặt</button>
 </nav>
 
 <section class="view" id="v-hom">
@@ -145,7 +145,9 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function day(d,create){if(!S.days[d]&&create)S.days[d]={items:{},extra:{}};return S.days[d]}
 function sums(d){const x=S.days[d];let k=0,p=0,n=0;if(!x)return{k,p,n};for(const m of MEALS){let mk=0;const it=(x.items||{})[m.id]||{};for(const id in it){if(!F[id])continue;mk+=F[id].kcal*it[id];p+=F[id].pro*it[id]}for(const e of((x.extra||{})[m.id]||[]))mk+=e.kcal;if(mk>0)n++;k+=mk}return{k,p,n}}
 function mealSum(d,m){const x=S.days[d]||{};let k=0;const it=(x.items||{})[m]||{};for(const id in it)if(F[id])k+=F[id].kcal*it[id];for(const e of((x.extra||{})[m]||[]))k+=e.kcal;return k}
-function lastWeight(a,b){let w=null;for(let d=a;d<=b;d=addD(d,1)){const x=S.days[d];if(x&&x.weight!=null)w=x.weight}return w}
+function lastW(a,b){let r=null;for(let d=a;d<=b;d=addD(d,1)){const x=S.days[d];if(x&&x.weight!=null)r={w:x.weight,d}}return r}
+function lastWeight(a,b){const r=lastW(a,b);return r?r.w:null}
+const sign=v=>{v=Math.round(v*10)/10;return (v>0?'+':'')+kg(v===0?0:v)}
 function cfg(){return S.cfg}
 function target(dateStr){const c=cfg();if(!c)return null;const end=addM(c.start,c.months);const t=Math.max(0,Math.min(1,diff(c.start,dateStr)/diff(c.start,end)));return c.w0+(c.goal-c.w0)*t}
 
@@ -197,16 +199,16 @@ function renderTuan(){
  const el=$('t-tuan');if(needCfg(el))return;const c=cfg(),t=today();
  let h='<table><tr><th>Tuần</th><th>Ngày đạt</th><th>Calo TB</th><th>Cân</th><th>Mục tiêu</th><th>Chênh</th></tr>';const rows=[];
  for(let i=0;;i++){const a=addD(c.start,i*7),b=addD(a,6);if(a>t)break;let ok=0,sum=0,cnt=0;for(let d=a;d<=b&&d<=t;d=addD(d,1)){const s=sums(d);if(s.k>=TARGET_MIN)ok++;if(s.k){sum+=s.k;cnt++}}
-  const w=lastWeight(a,b),tg=target(b),df=w==null?null:w-tg;
-  rows.unshift(`<tr${a<=t&&t<=b?' class="now"':''}><td>Tuần ${i+1} (${dm(a)}–${dm(b)})</td><td>${ok}/7</td><td>${cnt?fmt(sum/cnt):'—'}</td><td>${kg(w)}</td><td>${kg(tg)}</td><td>${df==null?'—':`<span class="${df>=-0.25?'ok':'no'}">${df>=0?'+':''}${kg(df)}</span>`}</td></tr>`)}
+  const r=lastW(a,b),w=r?r.w:null,tg=target(b),df=r?w-target(r.d):null;
+  rows.unshift(`<tr${a<=t&&t<=b?' class="now"':''}><td>Tuần ${i+1} (${dm(a)}–${dm(b)})</td><td>${ok}/7</td><td>${cnt?fmt(sum/cnt):'—'}</td><td>${kg(w)}</td><td>${kg(tg)}</td><td>${df==null?'—':`<span class="${df>=-0.25?'ok':'no'}">${sign(df)}</span>`}</td></tr>`)}
  el.innerHTML=h+rows.join('')+'</table>';
 }
 function renderThang(){
  const el=$('t-thang');if(needCfg(el))return;const c=cfg(),t=today();
  let h=`<table><tr><th>Tháng</th><th>Ngày đạt</th><th>Cân thật</th><th>Mốc cần đạt</th><th>Chênh</th></tr><tr><td>Bắt đầu ${dmy(c.start)}</td><td></td><td>${kg(c.w0)}</td><td>${kg(c.w0)}</td><td></td></tr>`;
  for(let i=0;i<c.months;i++){const a=addM(c.start,i),nx=addM(c.start,i+1),b=addD(nx,-1);let ok=0,len=diff(a,nx);if(a<=t)for(let d=a;d<=b&&d<=t;d=addD(d,1))if(sums(d).k>=TARGET_MIN)ok++;
-  const w=a<=t?lastWeight(a,b):null,tg=c.w0+(c.goal-c.w0)*(i+1)/c.months,df=w==null?null:w-tg;
-  h+=`<tr${a<=t&&t<=b?' class="now"':''}><td>Tháng ${i+1} (${dm(a)}–${dm(b)})</td><td>${a<=t?ok+'/'+len:'—'}</td><td>${kg(w)}</td><td>${kg(tg)} <small>(${dm(nx)})</small></td><td>${df==null?'—':`<span class="${df>=-0.5?'ok':'no'}">${df>=0?'+':''}${kg(df)}</span>`}</td></tr>`}
+  const r=a<=t?lastW(a,b):null,w=r?r.w:null,tg=c.w0+(c.goal-c.w0)*(i+1)/c.months,df=r?w-target(r.d):null;
+  h+=`<tr${a<=t&&t<=b?' class="now"':''}><td>Tháng ${i+1} (${dm(a)}–${dm(b)})</td><td>${a<=t?ok+'/'+len:'—'}</td><td>${kg(w)}</td><td>${kg(tg)} <small>(${dm(nx)})</small></td><td>${df==null?'—':`<span class="${df>=-0.5?'ok':'no'}">${sign(df)}</span>`}</td></tr>`}
  el.innerHTML=h+'</table>';
 }
 function renderCai(){const c=cfg()||{};$('c-start').value=c.start||today();$('c-w0').value=c.w0??'';$('c-goal').value=c.goal??'';$('c-months').value=c.months||12}
