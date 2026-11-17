@@ -58,12 +58,14 @@ tr.now td{background:var(--accent-bg)}
 .chart{overflow-x:auto;margin:4px 0 10px}.chart svg{display:block}.chart text{fill:var(--muted);font-size:11px;font-family:inherit}.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .goal{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}.goal div{background:var(--chip);border-radius:8px;padding:8px 4px}.goal b{display:block;font-size:20px}.goal span{font-size:12px;color:var(--muted)}.gbar{height:14px;background:var(--chip);border-radius:7px;overflow:hidden;margin:10px 0 4px;position:relative}.gbar>div{height:100%;background:var(--accent)}.gbar>i{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text)}.gsub{font-size:13px;color:var(--muted)}@media(max-width:420px){.goal{grid-template-columns:repeat(2,1fr)}}
 .win{width:70px;padding:4px 6px;border:1px solid var(--accent);border-radius:6px;background:var(--card);color:var(--text);font:inherit;font-size:14px;text-align:right}
+.acct{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0 0;font-size:13px;color:var(--muted)}.acct button{padding:6px 10px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font:inherit;font-size:13px;cursor:pointer}.acct button.ghost{background:none;color:var(--text);border-color:var(--line)}
 .note{font-size:13px;color:var(--muted);margin-top:12px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 </style>
 </head>
 <body>
 <main>
+<div class="acct" id="acct"></div>
 <nav class="tabs">
   <button data-v="hom">Ghi ăn</button><button data-v="ngay">Ngày</button><button data-v="tuan">Tuần</button><button data-v="thang">Tháng</button><button data-v="cai">Cài đặt</button>
 </nav>
@@ -144,8 +146,10 @@ function load(){
  if(!S||!S.days)S={cfg:null,days:{}};
  try{const o=JSON.parse(localStorage.getItem(OLD));if(o&&o.date&&!S.days[o.date]){S.days[o.date]={items:o.items||{},extra:o.extra||{}};localStorage.removeItem(OLD);save()}}catch(e){}
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-function day(d,create){if(!S.days[d]&&create)S.days[d]={items:{},extra:{}};return S.days[d]}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(window.cloudPush)window.cloudPush()}
+function day(d,create){if(!S.days[d]&&create)S.days[d]={items:{},extra:{}};if(create)S.days[d].u=Date.now();return S.days[d]}
+function merge(a,b){const r={cfg:null,cfgU:0,days:{}};for(const o of[a,b]){if(!o)continue;if(o.cfg&&(!r.cfg||(o.cfgU||0)>r.cfgU)){r.cfg=o.cfg;r.cfgU=o.cfgU||0}for(const d in(o.days||{})){const x=o.days[d],y=r.days[d];if(!y||(x.u||0)>(y.u||0))r.days[d]=x}}return r}
+function refresh(){renderGoal();({hom:renderHom,ngay:renderNgay,tuan:renderTuan,thang:renderThang,cai:renderCai})[tab]()}
 function sums(d){const x=S.days[d];let k=0,p=0,n=0;if(!x)return{k,p,n};for(const m of MEALS){let mk=0;const it=(x.items||{})[m.id]||{};for(const id in it){if(!F[id])continue;mk+=F[id].kcal*it[id];p+=F[id].pro*it[id]}for(const e of((x.extra||{})[m.id]||[]))mk+=e.kcal;if(mk>0)n++;k+=mk}return{k,p,n}}
 function mealSum(d,m){const x=S.days[d]||{};let k=0;const it=(x.items||{})[m]||{};for(const id in it)if(F[id])k+=F[id].kcal*it[id];for(const e of((x.extra||{})[m]||[]))k+=e.kcal;return k}
 function lastW(a,b){let r=null;for(let d=a;d<=b;d=addD(d,1)){const x=S.days[d];if(x&&x.weight!=null)r={w:x.weight,d}}return r}
@@ -181,7 +185,7 @@ function renderHom(){
   }
   card.appendChild(g);
   const ex=document.createElement('div');ex.className='extra';
-  ((x&&x.extra[m.id])||[]).forEach((e,i)=>{const r=document.createElement('div');r.innerHTML=`<span>${esc(e.name)}: ${fmt(e.kcal)} kcal</span>`;const b=document.createElement('button');b.textContent='Xóa';b.onclick=()=>{S.days[view].extra[m.id].splice(i,1);save();renderHom()};r.appendChild(b);ex.appendChild(r)});
+  ((x&&x.extra[m.id])||[]).forEach((e,i)=>{const r=document.createElement('div');r.innerHTML=`<span>${esc(e.name)}: ${fmt(e.kcal)} kcal</span>`;const b=document.createElement('button');b.textContent='Xóa';b.onclick=()=>{day(view,true).extra[m.id].splice(i,1);save();renderHom()};r.appendChild(b);ex.appendChild(r)});
   card.appendChild(ex);
   const cu=document.createElement('div');cu.className='custom';
   cu.innerHTML=`<input placeholder="Món khác (vd: phở)"><input type="number" inputmode="numeric" placeholder="kcal"><button class="btn">Thêm</button>`;
@@ -255,15 +259,38 @@ $('next').onclick=()=>{if(view<today()){view=addD(view,1);renderHom()}};
 $('w').onchange=e=>{const v=parseFloat(String(e.target.value).replace(',','.'));const y=day(view,true);if(v>0)y.weight=Math.round(v*10)/10;else delete y.weight;save();renderGoal()};
 $('c-save').onclick=()=>{const s=$('c-start').value,w0=parseFloat($('c-w0').value),g=parseFloat($('c-goal').value),m=parseInt($('c-months').value);
  if(!s||!(w0>0)||!(g>0)||!(m>0)){$('c-msg').className='no';$('c-msg').textContent='Điền đủ 4 ô trước khi lưu.';return}
- S.cfg={start:s,w0,goal:g,months:m};save();$('c-msg').className='ok';$('c-msg').textContent='Đã lưu.'};
+ S.cfg={start:s,w0,goal:g,months:m};S.cfgU=Date.now();save();$('c-msg').className='ok';$('c-msg').textContent='Đã lưu.'};
 $('exp').onclick=async()=>{const txt=JSON.stringify(S,null,1),name='sao-luu-calo-'+today()+'.json',msg=$('exp-msg');
  if(window.showSaveFilePicker){try{const h=await showSaveFilePicker({suggestedName:name,types:[{description:'File sao lưu',accept:{'application/json':['.json']}}]});const w=await h.createWritable();await w.write(txt);await w.close();msg.textContent='Đã lưu file '+h.name+' vào thư mục bạn chọn.';return}catch(e){if(e&&e.name==='AbortError')return}}
  const b=new Blob([txt],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);msg.textContent='Đã tải file '+name+' về thư mục Tải xuống (Download).'};
 $('imp').onclick=()=>$('impf').click();
 $('impf').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const o=JSON.parse(t);if(!o||!o.days)throw 0;if(confirm('Thay dữ liệu trên máy này bằng file sao lưu?')){S=o;save();alert('Đã nhập xong.');show('ngay')}}catch(x){alert('File không đúng định dạng sao lưu.')}});e.target.value=''};
-$('clr').onclick=()=>{if(confirm('Xóa phần ăn của ngày '+dmy(view)+'? Cân nặng vẫn giữ.')){const x=S.days[view];if(x){x.items={};x.extra={}}save();alert('Đã xóa.')}};
+$('clr').onclick=()=>{if(confirm('Xóa phần ăn của ngày '+dmy(view)+'? Cân nặng vẫn giữ.')){const x=day(view,true);x.items={};x.extra={};save();alert('Đã xóa.')}};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tab==='hom'&&view<today()&&view===addD(today(),-1)){view=today();renderHom()}});
 load();show(cfg()?'hom':'cai');
+</script>
+<script type="module">
+const FIREBASE_CONFIG=null;
+const acct=document.getElementById('acct');
+if(!FIREBASE_CONFIG){acct.style.display='none'}else{
+ const V='10.12.2',B='https://www.gstatic.com/firebasejs/'+V+'/';
+ const {initializeApp}=await import(B+'firebase-app.js');
+ const {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged}=await import(B+'firebase-auth.js');
+ const {getFirestore,doc,getDoc,setDoc,serverTimestamp}=await import(B+'firebase-firestore.js');
+ const app=initializeApp(FIREBASE_CONFIG),auth=getAuth(app),db=getFirestore(app);
+ let user=null,timer=null,ready=false;
+ const bar=(t,btn)=>{acct.innerHTML=`<span>${t}</span>`;if(btn)acct.appendChild(btn)};
+ const mk=(t,f,g)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(g)b.className='ghost';return b};
+ const loginBtn=mk('Đăng nhập Google',async()=>{const pv=new GoogleAuthProvider();try{await signInWithPopup(auth,pv)}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')await signInWithRedirect(auth,pv);else alert('Đăng nhập lỗi: '+e.code)}});
+ const ref=()=>doc(db,'users',user.uid);
+ async function pull(){const snap=await getDoc(ref());const cloud=snap.exists()?JSON.parse(snap.data().state||'null'):null;S=merge(cloud,S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh();return cloud}
+ async function push(){if(!user)return;try{await setDoc(ref(),{state:JSON.stringify(S),updated:serverTimestamp()});show2('Đã lưu lên tài khoản ✓')}catch(e){show2('Chưa lưu được lên mạng, sẽ thử lại')}}
+ function show2(t){bar((user.email||'Đã đăng nhập')+' · '+t,mk('Đăng xuất',()=>{if(confirm('Đăng xuất? Dữ liệu vẫn nằm trong tài khoản.'))signOut(auth)},true))}
+ window.cloudPush=()=>{if(!user||!ready)return;show2('Đang lưu...');clearTimeout(timer);timer=setTimeout(push,800)};
+ onAuthStateChanged(auth,async u=>{user=u;ready=false;if(!u){bar('Chưa đăng nhập: dữ liệu chỉ nằm trên máy này',loginBtn);return}
+  show2('Đang tải dữ liệu...');try{await pull();ready=true;await push()}catch(e){show2('Lỗi tải dữ liệu: '+(e.code||e.message))}});
+ document.addEventListener('visibilitychange',async()=>{if(!document.hidden&&user&&ready){try{await pull()}catch(e){}}});
+}
 </script>
 </body>
 </html>
