@@ -56,6 +56,7 @@ tr.now td{background:var(--accent-bg)}
 .ok{color:var(--accent);font-weight:600}.no{color:var(--warn)}
 .form{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center}
 .chart{overflow-x:auto;margin:4px 0 10px}.chart svg{display:block}.chart text{fill:var(--muted);font-size:11px;font-family:inherit}.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.goal{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}.goal div{background:var(--chip);border-radius:8px;padding:8px 4px}.goal b{display:block;font-size:20px}.goal span{font-size:12px;color:var(--muted)}.gbar{height:14px;background:var(--chip);border-radius:7px;overflow:hidden;margin:10px 0 4px;position:relative}.gbar>div{height:100%;background:var(--accent)}.gbar>i{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text)}.gsub{font-size:13px;color:var(--muted)}@media(max-width:420px){.goal{grid-template-columns:repeat(2,1fr)}}
 .note{font-size:13px;color:var(--muted);margin-top:12px}
 .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 </style>
@@ -75,12 +76,12 @@ tr.now td{background:var(--accent-bg)}
     <div class="status low" id="status"></div>
     <label class="weight">Cân nặng ngày này: <input id="w" type="number" inputmode="decimal" step="0.1" placeholder="kg"> kg</label>
   </div>
-  <div id="meals"></div>
+  <div class="card goalcard"></div><div id="meals"></div>
 </section>
 
-<section class="view" id="v-ngay"><div class="card"><h2>Theo ngày</h2><div class="legend"><span><i style="background:var(--accent)"></i>Đạt</span><span><i style="background:var(--warn)"></i>Thiếu</span><span>— Mục tiêu 2.200 kcal</span></div><div class="chart" id="c-ngay"></div><div class="wrap" id="t-ngay"></div></div></section>
-<section class="view" id="v-tuan"><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
-<section class="view" id="v-thang"><div class="card"><h2>Theo tháng</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-thang"></div><div class="wrap" id="t-thang"></div><p class="note">Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
+<section class="view" id="v-ngay"><div class="card goalcard"></div><div class="card"><h2>Theo ngày</h2><div class="legend"><span><i style="background:var(--accent)"></i>Đạt</span><span><i style="background:var(--warn)"></i>Thiếu</span><span>— Mục tiêu 2.200 kcal</span></div><div class="chart" id="c-ngay"></div><div class="wrap" id="t-ngay"></div></div></section>
+<section class="view" id="v-tuan"><div class="card goalcard"></div><div class="card"><h2>Theo tuần</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-tuan"></div><div class="wrap" id="t-tuan"></div><p class="note">Cân của tuần = lần cân cuối cùng trong tuần đó. Ngày đạt = ăn đủ từ 2.200 kcal.</p></div></section>
+<section class="view" id="v-thang"><div class="card goalcard"></div><div class="card"><h2>Theo tháng</h2><div class="legend"><span><i style="background:var(--accent)"></i>Cân đúng tiến độ</span><span><i style="background:var(--warn)"></i>Cân chậm</span><span>— Mốc cần đạt</span></div><div class="chart" id="c-thang"></div><div class="wrap" id="t-thang"></div><p class="note">Mỗi tháng tính từ ngày bắt đầu (ví dụ 17 tháng này đến 16 tháng sau). Cân thật = lần cân cuối cùng trong tháng đó.</p></div></section>
 
 <section class="view" id="v-cai">
   <div class="card"><h2>Mục tiêu</h2>
@@ -202,6 +203,17 @@ function chart(el,rows,o){
   g+=`<text x="${cx}" y="${H-pb+16}" text-anchor="middle">${r.l}</text>`;if(r.l2)g+=`<text x="${cx}" y="${H-pb+30}" text-anchor="middle">${r.l2}</text>`});
  if(o.line!=null)g+=`<line x1="${pl}" x2="${W}" y1="${y(o.line)}" y2="${y(o.line)}" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
  el.innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="${o.aria}">${g}</svg>`;el.scrollLeft=el.scrollWidth}
+function renderGoal(){
+ const c=cfg();let h;
+ if(!c)h='<h2>Mục tiêu</h2><p class="gsub">Vào mục Cài đặt nhập mục tiêu trước.</p>';
+ else{const ks=Object.keys(S.days).filter(d=>S.days[d].weight!=null).sort(),last=ks.length?ks[ks.length-1]:null,cur=last?S.days[last].weight:c.w0;
+  const need=c.goal-c.w0,done=cur-c.w0,pct=need?Math.max(0,Math.min(100,done/need*100)):100,left=Math.max(0,c.goal-cur);
+  const end=addM(c.start,c.months),total=diff(c.start,end),gone=Math.max(0,Math.min(total,diff(c.start,today()))),tp=gone/total*100,should=target(today());
+  const p1=v=>v.toLocaleString('vi-VN',{maximumFractionDigits:1});
+  h=`<h2>Mục tiêu ${kg(c.goal)} kg</h2><div class="goal"><div><b>${kg(cur)}</b><span>Cân bây giờ</span></div><div><b>${p1(pct)}%</b><span>Đã đạt</span></div><div><b>${p1(100-pct)}%</b><span>Còn lại</span></div><div><b>${kg(left)}</b><span>Còn thiếu (kg)</span></div></div>
+  <div class="gbar" title="Vạch đen = đúng tiến độ hôm nay"><div style="width:${pct}%"></div><i style="left:${tp}%"></i></div>
+  <p class="gsub">Đã tăng ${kg(done)} / ${kg(need)} kg. Hôm nay đúng tiến độ phải ở ${kg(should)} kg (vạch đen). Còn ${total-gone} ngày đến ${dmy(end)}.${last?' Lần cân gần nhất: '+dm(last)+'.':' Chưa có lần cân nào, đang lấy cân lúc bắt đầu.'}</p>`}
+ document.querySelectorAll('.goalcard').forEach(e=>e.innerHTML=h)}
 function renderNgay(){
  {const t=today(),rows=[];for(let i=13;i>=0;i--){const d=addD(t,-i),k=sums(d).k;rows.push({l:dm(d),v:k||null,ok:k>=TARGET_MIN})}
   chart($('c-ngay'),rows,{min:0,line:TARGET_MIN,fmt:v=>v>=1000?(v/1000).toLocaleString('vi-VN',{maximumFractionDigits:1})+'k':fmt(v),aria:'Calo 14 ngày gần nhất'})}
@@ -231,11 +243,11 @@ function renderThang(){
  el.innerHTML=h+'</table>';
 }
 function renderCai(){const c=cfg()||{};$('c-start').value=c.start||today();$('c-w0').value=c.w0??'';$('c-goal').value=c.goal??'';$('c-months').value=c.months||12}
-function show(v){tab=v;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));({hom:renderHom,ngay:renderNgay,tuan:renderTuan,thang:renderThang,cai:renderCai})[v]();scrollTo(0,0)}
+function show(v){tab=v;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));renderGoal();({hom:renderHom,ngay:renderNgay,tuan:renderTuan,thang:renderThang,cai:renderCai})[v]();scrollTo(0,0)}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.v));
 $('prev').onclick=()=>{view=addD(view,-1);renderHom()};
 $('next').onclick=()=>{if(view<today()){view=addD(view,1);renderHom()}};
-$('w').onchange=e=>{const v=parseFloat(String(e.target.value).replace(',','.'));const y=day(view,true);if(v>0)y.weight=Math.round(v*10)/10;else delete y.weight;save()};
+$('w').onchange=e=>{const v=parseFloat(String(e.target.value).replace(',','.'));const y=day(view,true);if(v>0)y.weight=Math.round(v*10)/10;else delete y.weight;save();renderGoal()};
 $('c-save').onclick=()=>{const s=$('c-start').value,w0=parseFloat($('c-w0').value),g=parseFloat($('c-goal').value),m=parseInt($('c-months').value);
  if(!s||!(w0>0)||!(g>0)||!(m>0)){$('c-msg').className='no';$('c-msg').textContent='Điền đủ 4 ô trước khi lưu.';return}
  S.cfg={start:s,w0,goal:g,months:m};save();$('c-msg').className='ok';$('c-msg').textContent='Đã lưu.'};
