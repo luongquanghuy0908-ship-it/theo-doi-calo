@@ -290,13 +290,16 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
   S=merge(cloud,S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh()}
  async function push(){if(!ready||busy)return;if(!dirty.size&&!cfgDirty){ok('Đã lưu ✓');return}
   busy=true;const ds=[...dirty];dirty.clear();const sendCfg=cfgDirty;cfgDirty=false;ok('Đang lưu...');
-  try{const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());if(!r.ok)throw r;ok('Đã lưu ✓')}
+  try{const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());if(!r.ok)throw r;if(r.days&&!dirty.size){S=merge({cfg:S.cfg,cfgU:S.cfgU,days:r.days},S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh()}ok('Đã lưu ✓')}
   catch(e){ds.forEach(d=>dirty.add(d));if(sendCfg)cfgDirty=true;ok('Chưa lưu được, sẽ thử lại');setTimeout(push,15000)}
   finally{busy=false;if(dirty.size||cfgDirty)setTimeout(push,500)}}
  const _day=day;day=function(d,c){if(c)dirty.add(d);return _day(d,c)};
  window.cloudPush=()=>{if(!ready)return;if(S.cfg&&(S.cfgU||0)>(window._lastCfgU||0)){cfgDirty=true;window._lastCfgU=S.cfgU}clearTimeout(timer);timer=setTimeout(push,800)};
  async function start(){ready=false;ok('Đang tải dữ liệu...');try{await pull();window._lastCfgU=S.cfgU||0;ready=true;await push()}catch(e){if(e&&e.code==='key'){key=null;try{localStorage.removeItem(KK)}catch(x){}setBar('Sai mã đồng bộ, nhập lại',[loginBtn()])}else{ok('Không kết nối được, đang dùng dữ liệu trên máy');setTimeout(start,20000)}}}
- document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ready&&!busy)pull().catch(()=>{})});
+ const quiet=()=>ready&&!busy&&!dirty.size&&!cfgDirty;
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&quiet())pull().catch(()=>{})});
+ window.addEventListener('focus',()=>{if(quiet())pull().catch(()=>{})});
+ setInterval(()=>{if(!document.hidden&&quiet()&&document.activeElement.tagName!=='INPUT')pull().catch(()=>{})},20000);
  if(key)start();else setBar('Chưa đồng bộ: dữ liệu chỉ nằm trên máy này',[loginBtn()]);
 })();
 </script>
