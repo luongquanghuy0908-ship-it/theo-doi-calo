@@ -148,7 +148,7 @@ function load(){
  try{const o=JSON.parse(localStorage.getItem(OLD));if(o&&o.date&&!S.days[o.date]){S.days[o.date]={items:o.items||{},extra:o.extra||{}};localStorage.removeItem(OLD);save()}}catch(e){}
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(window.cloudPush)window.cloudPush()}
-function day(d,create){if(!S.days[d]&&create)S.days[d]={items:{},extra:{}};if(create)S.days[d].u=Date.now();return S.days[d]}
+function day(d,create){if(!S.days[d]&&create)S.days[d]={items:{},extra:{}};if(create)S.days[d].u=Math.max(Date.now(),(S.days[d].u||0)+1);return S.days[d]}
 function merge(a,b){const r={cfg:null,cfgU:0,days:{}};for(const o of[a,b]){if(!o)continue;if(o.cfg&&(!r.cfg||(o.cfgU||0)>r.cfgU)){r.cfg=o.cfg;r.cfgU=o.cfgU||0}for(const d in(o.days||{})){const x=o.days[d],y=r.days[d];if(!y||(x.u||0)>(y.u||0))r.days[d]=x}}return r}
 function refresh(){renderGoal();({hom:renderHom,ngay:renderNgay,tuan:renderTuan,thang:renderThang,cai:renderCai})[tab]()}
 function sums(d){const x=S.days[d];let k=0,p=0,n=0;if(!x)return{k,p,n};for(const m of MEALS){let mk=0;const it=(x.items||{})[m.id]||{};for(const id in it){if(!F[id])continue;mk+=F[id].kcal*it[id];p+=F[id].pro*it[id]}for(const e of((x.extra||{})[m.id]||[]))mk+=e.kcal;if(mk>0)n++;k+=mk}return{k,p,n}}
