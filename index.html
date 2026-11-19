@@ -275,31 +275,54 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
 (function(){
  const acct=document.getElementById('acct'),KK='theo-doi-calo-ma';
  if(!SYNC_URL){acct.style.display='none';return}
- let key=null,timer=null,busy=false,ready=false;const dirty=new Set();let cfgDirty=false;
+ let key=null,timer=null,busy=false,ready=false,again=false,cfgDirty=false,fails=0;
  try{key=localStorage.getItem(KK)}catch(e){}
+ const BK='theo-doi-calo-base';let base={};try{base=JSON.parse(localStorage.getItem(BK))||{}}catch(e){}
+ const saveBase=()=>{try{localStorage.setItem(BK,JSON.stringify(base))}catch(e){}};
  const setBar=(t,btns)=>{acct.innerHTML='';const sp=document.createElement('span');sp.textContent=t;acct.appendChild(sp);for(const b of(btns||[]))acct.appendChild(b)};
  const mk=(t,f,g)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(g)b.className='ghost';return b};
- const loginBtn=()=>mk('Nhập mã đồng bộ',()=>{const k=prompt('Nhập mã đồng bộ của bạn (lần đầu tiên thì tự đặt một mã, nhớ kỹ để dùng ở máy khác):');if(k&&k.trim()){key=k.trim();try{localStorage.setItem(KK,key)}catch(e){}start()}});
- const outBtn=()=>mk('Thoát',()=>{if(confirm('Thoát đồng bộ trên máy này? Dữ liệu vẫn nằm trong Google Sheet.')){key=null;ready=false;try{localStorage.removeItem(KK)}catch(e){}setBar('Chưa đồng bộ: dữ liệu chỉ nằm trên máy này',[loginBtn()])}},true);
+ const loginBtn=()=>mk('Nhập mã đồng bộ',()=>{const k=prompt('Nhập mã đồng bộ của bạn (lần đầu tiên thì tự đặt một mã, nhớ kỹ để dùng ở máy khác):');if(k&&k.trim()){key=k.trim();base={};saveBase();try{localStorage.setItem(KK,key)}catch(e){}start()}});
+ const outBtn=()=>mk('Thoát',()=>{if(confirm('Thoát đồng bộ trên máy này? Dữ liệu vẫn nằm trong Google Sheet.')){key=null;ready=false;base={};saveBase();try{localStorage.removeItem(KK)}catch(e){}setBar('Chưa đồng bộ: dữ liệu chỉ nằm trên máy này',[loginBtn()])}},true);
  const ok=t=>setBar('Đồng bộ Google Sheet · '+t,[outBtn()]);
  function row(d){const x=S.days[d]||{},s=sums(d);return[d,Math.round(s.k),Math.round(s.p),s.n,s.k>=TARGET_MIN?'Đạt':(s.k?'Thiếu':''),x.weight??'',JSON.stringify(x),x.u||0]}
+ // Gộp theo từng bữa: so với bản đồng bộ lần trước (base) để biết bữa nào máy này sửa, bữa nào máy kia sửa
+ const J=v=>JSON.stringify(v===undefined?null:v);
+ const part=(x,k)=>{if(!x)return k==='w'?null:[{},[]];if(k==='w')return x.weight??null;const it={};for(const[f,n]of Object.entries((x.items||{})[k]||{}))if(n)it[f]=n;return[it,(x.extra||{})[k]||[]]};
+ const empty=p=>p==null||(!Object.keys(p[0]).length&&!p[1].length);
+ const keysOf=(...xs)=>{const s=new Set(['w']);for(const x of xs)if(x){Object.keys(x.items||{}).forEach(k=>s.add(k));Object.keys(x.extra||{}).forEach(k=>s.add(k))}return s};
+ const same=(a,b)=>{if(!a&&!b)return true;for(const k of keysOf(a,b))if(J(part(a,k))!==J(part(b,k)))return false;return true};
+ function mergeDay(l,c,b){if(!l)return c;if(!c)return l;const r={items:{},extra:{}};
+  for(const k of keysOf(l,c,b)){const L=part(l,k),C=part(c,k),B=b?part(b,k):undefined;let p;
+   if(J(L)===J(C))p=L;else if(b&&J(C)===J(B))p=L;else if(b&&J(L)===J(B))p=C;else if(empty(L))p=C;else if(empty(C))p=L;else p=(l.u||0)>=(c.u||0)?L:C;
+   if(k==='w'){if(p!=null)r.weight=p}else{if(Object.keys(p[0]).length)r.items[k]=p[0];if(p[1].length)r.extra[k]=p[1]}}
+  r.u=Math.max(l.u||0,c.u||0);return r}
  async function pull(){const r=await fetch(SYNC_URL+'?key='+encodeURIComponent(key)).then(r=>r.json());if(r.error==='key')throw{code:'key'};
-  const cloud={cfg:r.cfg,cfgU:r.cfgU,days:r.days||{}};
-  for(const d in S.days){const c=cloud.days[d];if(!c||(S.days[d].u||0)>(c.u||0))dirty.add(d)}
-  if(S.cfg&&(!cloud.cfg||(S.cfgU||0)>(cloud.cfgU||0)))cfgDirty=true;
-  S=merge(cloud,S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh()}
- async function push(){if(!ready||busy)return;if(!dirty.size&&!cfgDirty){ok('Đã lưu ✓');return}
-  busy=true;const ds=[...dirty];dirty.clear();const sendCfg=cfgDirty;cfgDirty=false;ok('Đang lưu...');
-  try{const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());if(!r.ok)throw r;if(r.days&&!dirty.size){S=merge({cfg:S.cfg,cfgU:S.cfgU,days:r.days},S);try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}refresh()}ok('Đã lưu ✓')}
-  catch(e){ds.forEach(d=>dirty.add(d));if(sendCfg)cfgDirty=true;ok('Chưa lưu được, sẽ thử lại');setTimeout(push,15000)}
-  finally{busy=false;if(dirty.size||cfgDirty)setTimeout(push,500)}}
- const _day=day;day=function(d,c){if(c)dirty.add(d);return _day(d,c)};
+  const cd=r.days||{},days={};let changed=false;
+  for(const d of new Set([...Object.keys(S.days),...Object.keys(cd)])){const l=S.days[d],c=cd[d];
+   const v=same(l,base[d])?(c||l):mergeDay(l,c,base[d]);if(!same(v,l))changed=true;days[d]=v;if(c)base[d]=c}
+  S.days=days;saveBase();
+  if(r.cfg&&(!S.cfg||(r.cfgU||0)>(S.cfgU||0))){S.cfg=r.cfg;S.cfgU=r.cfgU||0;window._lastCfgU=S.cfgU;changed=true}
+  else if(S.cfg&&(!r.cfg||(S.cfgU||0)>(r.cfgU||0)))cfgDirty=true;
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(changed)refresh()}
+ async function push(){if(!ready)return;if(busy){again=true;return}busy=true;
+  try{await pull();
+   const ds=Object.keys(S.days).filter(d=>!same(S.days[d],base[d])),sendCfg=cfgDirty;
+   if(ds.length||sendCfg){ok('Đang lưu...');const sent={};
+    for(const d of ds){const x=S.days[d];x.u=Math.max(Date.now(),((base[d]||{}).u||0)+1);sent[d]=JSON.parse(JSON.stringify(x))}
+    try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+    const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());
+    if(r.error==='key')throw{code:'key'};if(!r.ok)throw r;
+    for(const d of ds)base[d]=sent[d];saveBase();if(sendCfg)cfgDirty=false}
+   fails=0;ok('Đã lưu ✓')}
+  catch(e){if(e&&e.code==='key'){ready=false;key=null;try{localStorage.removeItem(KK)}catch(x){}setBar('Sai mã đồng bộ, nhập lại',[loginBtn()]);return}
+   fails++;ok(fails>1?'Không kết nối được, đang dùng dữ liệu trên máy':'Chưa lưu được, sẽ thử lại');setTimeout(push,15000)}
+  finally{busy=false;if(again){again=false;setTimeout(push,300)}}}
  window.cloudPush=()=>{if(!ready)return;if(S.cfg&&(S.cfgU||0)>(window._lastCfgU||0)){cfgDirty=true;window._lastCfgU=S.cfgU}clearTimeout(timer);timer=setTimeout(push,800)};
- async function start(){ready=false;ok('Đang tải dữ liệu...');try{await pull();window._lastCfgU=S.cfgU||0;ready=true;await push()}catch(e){if(e&&e.code==='key'){key=null;try{localStorage.removeItem(KK)}catch(x){}setBar('Sai mã đồng bộ, nhập lại',[loginBtn()])}else{ok('Không kết nối được, đang dùng dữ liệu trên máy');setTimeout(start,20000)}}}
- const quiet=()=>ready&&!busy&&!dirty.size&&!cfgDirty;
- document.addEventListener('visibilitychange',()=>{if(!document.hidden&&quiet())pull().catch(()=>{})});
- window.addEventListener('focus',()=>{if(quiet())pull().catch(()=>{})});
- setInterval(()=>{if(!document.hidden&&quiet()&&document.activeElement.tagName!=='INPUT')pull().catch(()=>{})},20000);
+ function start(){window._lastCfgU=S.cfgU||0;ready=true;ok('Đang tải dữ liệu...');push()}
+ const calm=()=>ready&&!busy&&!document.hidden&&document.activeElement.tagName!=='INPUT';
+ document.addEventListener('visibilitychange',()=>{if(calm())push()});
+ window.addEventListener('focus',()=>{if(calm())push()});
+ setInterval(()=>{if(calm())push()},20000);
  if(key)start();else setBar('Chưa đồng bộ: dữ liệu chỉ nằm trên máy này',[loginBtn()]);
 })();
 </script>
