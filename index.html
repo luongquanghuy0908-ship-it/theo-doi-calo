@@ -277,8 +277,10 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
  if(!SYNC_URL){acct.style.display='none';return}
  let key=null,timer=null,busy=false,ready=false,again=false,cfgDirty=false,fails=0;
  try{key=localStorage.getItem(KK)}catch(e){}
- const BK='theo-doi-calo-base';let base={};try{base=JSON.parse(localStorage.getItem(BK))||{}}catch(e){}
- const saveBase=()=>{try{localStorage.setItem(BK,JSON.stringify(base))}catch(e){}};
+ // base = bản đã đồng bộ lần trước, lưu CHUNG với dữ liệu (S._base) để 2 tab không lệch nhau
+ try{localStorage.removeItem('theo-doi-calo-base')}catch(e){}
+ let base=S._base||{};
+ const saveBase=()=>{S._base=base;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
  const setBar=(t,btns)=>{acct.innerHTML='';const sp=document.createElement('span');sp.textContent=t;acct.appendChild(sp);for(const b of(btns||[]))acct.appendChild(b)};
  const mk=(t,f,g)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(g)b.className='ghost';return b};
  const loginBtn=()=>mk('Nhập mã đồng bộ',()=>{const k=prompt('Nhập mã đồng bộ của bạn (lần đầu tiên thì tự đặt một mã, nhớ kỹ để dùng ở máy khác):');if(k&&k.trim()){key=k.trim();base={};saveBase();try{localStorage.setItem(KK,key)}catch(e){}start()}});
@@ -293,13 +295,13 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
  const same=(a,b)=>{if(!a&&!b)return true;for(const k of keysOf(a,b))if(J(part(a,k))!==J(part(b,k)))return false;return true};
  function mergeDay(l,c,b){if(!l)return c;if(!c)return l;const r={items:{},extra:{}};
   for(const k of keysOf(l,c,b)){const L=part(l,k),C=part(c,k),B=b?part(b,k):undefined;let p;
-   if(J(L)===J(C))p=L;else if(b&&J(C)===J(B))p=L;else if(b&&J(L)===J(B))p=C;else if(empty(L))p=C;else if(empty(C))p=L;else p=(l.u||0)>=(c.u||0)?L:C;
+   if(J(L)===J(C))p=L;else if(b&&(l.u||0)<=(b.u||0))p=C;else if(b&&J(C)===J(B))p=L;else if(b&&J(L)===J(B))p=C;else if(empty(L))p=C;else if(empty(C))p=L;else p=(l.u||0)>=(c.u||0)?L:C;
    if(k==='w'){if(p!=null)r.weight=p}else{if(Object.keys(p[0]).length)r.items[k]=p[0];if(p[1].length)r.extra[k]=p[1]}}
   r.u=Math.max(l.u||0,c.u||0);return r}
  async function pull(){const r=await fetch(SYNC_URL+'?key='+encodeURIComponent(key)).then(r=>r.json());if(r.error==='key')throw{code:'key'};
   const cd=r.days||{},days={};let changed=false;
   for(const d of new Set([...Object.keys(S.days),...Object.keys(cd)])){const l=S.days[d],c=cd[d];
-   const v=same(l,base[d])?(c||l):mergeDay(l,c,base[d]);if(!same(v,l))changed=true;days[d]=v;if(c)base[d]=c}
+   const b=base[d],v=(same(l,b)||(b&&l&&(l.u||0)<=(b.u||0)))?(c||l):mergeDay(l,c,b);if(!same(v,l))changed=true;days[d]=v;if(c)base[d]=c}
   S.days=days;saveBase();
   if(r.cfg&&(!S.cfg||(r.cfgU||0)>(S.cfgU||0))){S.cfg=r.cfg;S.cfgU=r.cfgU||0;window._lastCfgU=S.cfgU;changed=true}
   else if(S.cfg&&(!r.cfg||(S.cfgU||0)>(r.cfgU||0)))cfgDirty=true;
@@ -310,8 +312,8 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
    if(ds.length||sendCfg){ok('Đang lưu...');const sent={};
     for(const d of ds){const x=S.days[d];x.u=Math.max(Date.now(),((base[d]||{}).u||0)+1);sent[d]=JSON.parse(JSON.stringify(x))}
     try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
-    const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());
-    if(r.error==='key')throw{code:'key'};if(!r.ok)throw r;
+    const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({v:2,key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());
+    if(r.error==='key')throw{code:'key'};if(r.error==='old'){location.reload();return}if(!r.ok)throw r;
     for(const d of ds)base[d]=sent[d];saveBase();if(sendCfg)cfgDirty=false}
    fails=0;ok('Đã lưu ✓')}
   catch(e){if(e&&e.code==='key'){ready=false;key=null;try{localStorage.removeItem(KK)}catch(x){}setBar('Sai mã đồng bộ, nhập lại',[loginBtn()]);return}
