@@ -314,7 +314,7 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
     try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
     const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({v:2,key,rows:ds.map(row),cfg:sendCfg?S.cfg:null,cfgU:S.cfgU||0})}).then(r=>r.json());
     if(r.error==='key')throw{code:'key'};if(r.error==='old'){location.reload();return}if(!r.ok)throw r;
-    for(const d of ds)base[d]=sent[d];saveBase();if(sendCfg)cfgDirty=false}
+    if(sendCfg)cfgDirty=false;if(ds.length)again=true}// tải lại để kiểm tra: nếu máy khác vừa ghi đè cùng lúc thì gộp và lưu tiếp
    fails=0;ok('Đã lưu ✓')}
   catch(e){if(e&&e.code==='key'){ready=false;key=null;try{localStorage.removeItem(KK)}catch(x){}setBar('Sai mã đồng bộ, nhập lại',[loginBtn()]);return}
    fails++;ok(fails>1?'Không kết nối được, đang dùng dữ liệu trên máy':'Chưa lưu được, sẽ thử lại');setTimeout(push,15000)}
