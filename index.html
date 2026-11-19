@@ -301,7 +301,7 @@ const SYNC_URL='https://script.google.com/macros/s/AKfycbxDUZ-ZOafZxbelMLjTJ_h8n
  async function pull(){const r=await fetch(SYNC_URL+'?key='+encodeURIComponent(key)).then(r=>r.json());if(r.error==='key')throw{code:'key'};
   const cd=r.days||{},days={};let changed=false;
   for(const d of new Set([...Object.keys(S.days),...Object.keys(cd)])){const l=S.days[d],c=cd[d];
-   const b=base[d],v=(same(l,b)||(b&&l&&(l.u||0)<=(b.u||0)))?(c||l):mergeDay(l,c,b);if(!same(v,l))changed=true;days[d]=v;if(c)base[d]=c}
+   const b=base[d],v=(same(l,b)||(b&&l&&(l.u||0)<=(b.u||0)))?(c||l):mergeDay(l,c,b);if(!same(v,l))changed=true;days[d]=v;if(c)base[d]=JSON.parse(JSON.stringify(c))}
   S.days=days;saveBase();
   if(r.cfg&&(!S.cfg||(r.cfgU||0)>(S.cfgU||0))){S.cfg=r.cfg;S.cfgU=r.cfgU||0;window._lastCfgU=S.cfgU;changed=true}
   else if(S.cfg&&(!r.cfg||(S.cfgU||0)>(r.cfgU||0)))cfgDirty=true;
